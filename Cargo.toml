@@ -2,6 +2,9 @@
 name = "nvidia-smi-rt"
 version = "0.1.0"
 edition = "2024"
+authors = ["jtstogner"]
+repository = "https://github.com/jtstogner/nvidia-smi-rt"
+license = "MIT"
 
 [dependencies]
 anyhow = "1.0.104"

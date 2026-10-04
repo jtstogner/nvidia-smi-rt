@@ -4,6 +4,18 @@ A blazing-fast real-time NVIDIA GPU telemetry terminal dashboard and process man
 
 `nvidia-smi-rt` interfaces directly with NVIDIA drivers via high-performance NVML C bindings (with automatic `nvidia-smi` CLI fallback) to deliver low-overhead, sub-millisecond hardware telemetry with high-resolution Braille continuous line charts, sparklines, progress gauges, and an interactive process manager.
 
+![Overview Dashboard](screenshots/main_screen.png)
+
+---
+
+## 📸 Screenshots
+
+| View | Preview |
+| :--- | :--- |
+| **1. Overview Dashboard**<br>Key metrics, live gauges, sparklines, dual Braille charts, PCIe bandwidth, video engine & active processes. | [![Overview](screenshots/main_screen.png)](screenshots/main_screen.png) |
+| **2. Detailed Charts**<br>High-resolution quad Braille coordinate plots for Compute %, VRAM GiB, Power Watts, and Thermals °C with rolling historical stats. | [![Detailed Charts](screenshots/charts_screen.png)](screenshots/charts_screen.png) |
+| **3. Process Manager**<br>Sortable process table (Compute & Graphics), VRAM usage, interactive command line inspector, and SIGTERM termination. | [![Process Manager](screenshots/process_screen.png)](screenshots/process_screen.png) |
+
 ---
 
 ## ✨ Features
@@ -37,7 +49,7 @@ A blazing-fast real-time NVIDIA GPU telemetry terminal dashboard and process man
 ### Build from source
 
 ```bash
-git clone https://github.com/your-username/nvidia-smi-rt.git
+git clone https://github.com/jtstogner/nvidia-smi-rt.git
 cd nvidia-smi-rt
 cargo build --release
 ```
