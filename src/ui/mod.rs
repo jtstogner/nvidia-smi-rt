@@ -1,3 +1,4 @@
+pub mod all_gpus;
 pub mod charts;
 pub mod header;
 pub mod modals;
@@ -35,6 +36,7 @@ pub fn render(f: &mut Frame, app: &mut App) {
     render_header(f, app, chunks[0]);
 
     match app.active_tab {
+        Tab::AllGpus => all_gpus::render_all_gpus(f, app, chunks[1]),
         Tab::Overview => render_overview(f, app, chunks[1]),
         Tab::Charts => charts::render_charts_tab(f, app, chunks[1]),
         Tab::Processes => render_processes_tab(f, app, chunks[1]),
@@ -64,7 +66,7 @@ fn render_footer(f: &mut Frame, app: &App, area: Rect) {
     let footer_line = Line::from(vec![
         Span::styled(" [? / h] Help ", Style::default().fg(NVIDIA_GREEN)),
         Span::styled("| [Space] Pause ", Style::default().fg(Color::White)),
-        Span::styled("| [1/2/3] Views ", Style::default().fg(Color::White)),
+        Span::styled("| [0-3] Views ", Style::default().fg(Color::White)),
         Span::styled("| [+/-] Interval ", Style::default().fg(Color::White)),
         Span::styled("| [q] Quit ", Style::default().fg(Color::White)),
         Span::raw(" | "),

@@ -27,9 +27,13 @@ struct Cli {
     #[arg(short, long, default_value_t = 500)]
     interval: u64,
 
-    /// Initial GPU index to monitor (for multi-GPU systems)
-    #[arg(short, long, default_value_t = 0)]
-    gpu: u32,
+    /// Initial GPU index to monitor (e.g. 0, 1) or 'all' to monitor all GPUs
+    #[arg(short, long, default_value = "0")]
+    gpu: String,
+
+    /// Monitor all GPUs simultaneously (alias: -g all)
+    #[arg(short, long)]
+    all: bool,
 
     /// Force using `nvidia-smi` CLI output instead of direct NVML C bindings
     #[arg(long)]
@@ -75,9 +79,34 @@ fn main() -> Result<()> {
     let cli = Cli::parse();
     let engine = TelemetryEngine::init(cli.no_nvml)?;
 
+    let is_all = cli.all || cli.gpu.eq_ignore_ascii_case("all");
+    let initial_gpu = if is_all {
+        0
+    } else {
+        cli.gpu.parse::<u32>().unwrap_or_else(|_| {
+            eprintln!("Invalid GPU index '{}', defaulting to GPU 0", cli.gpu);
+            0
+        })
+    };
+
     if cli.snapshot || !stdout().is_terminal() {
-        let snap = engine.get_snapshot(cli.gpu)?;
-        print_snapshot(&snap, &engine);
+        if is_all {
+            let count = engine.device_count().max(1);
+            for i in 0..count {
+                match engine.get_snapshot(i) {
+                    Ok(snap) => {
+                        print_snapshot(&snap, &engine);
+                        if i + 1 < count {
+                            println!("\n{}\n", "━".repeat(60));
+                        }
+                    }
+                    Err(e) => eprintln!("Error querying GPU {}: {}", i, e),
+                }
+            }
+        } else {
+            let snap = engine.get_snapshot(initial_gpu)?;
+            print_snapshot(&snap, &engine);
+        }
         return Ok(());
     }
 
@@ -92,7 +121,7 @@ fn main() -> Result<()> {
     let mut terminal = Terminal::new(backend)?;
     terminal.clear()?;
 
-    let mut app = App::new(engine, cli.gpu, interval);
+    let mut app = App::new(engine, initial_gpu, interval, is_all);
 
     let tick_rate = Duration::from_millis(30); // 33 FPS UI loop
     let mut last_tick = Instant::now();

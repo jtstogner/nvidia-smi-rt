@@ -25,17 +25,18 @@ A blazing-fast real-time NVIDIA GPU telemetry terminal dashboard and process man
   - **`nvidia-smi` CLI (Fallback)**: Automatic fallback if NVML libraries are unavailable or run in restricted container environments.
 - **📈 High-Resolution Braille Charts**: Continuous 2D time-series charts with Braille markers (providing 2×4 dot sub-cell resolution) for GPU Compute Utilization, VRAM footprint, Power Draw (Watts), and Thermals (°C).
 - **📊 Real-time Gauges & Sparklines**: Instant visual feedback on core load, memory pressure, power envelope headroom, and fan curves.
-- **🖥️ 3 Comprehensive Views**:
+- **🖥️ 4 Comprehensive Views**:
+  0. **All GPUs (Fleet View)**: Multi-device dashboard showing cluster-wide metrics (fleet compute load, total VRAM allocation, total power draw, peak thermals), device comparison table with mini progress bars, and fleet-wide process list.
   1. **Overview**: Executive dashboard showing key gauges, sparklines, dual Braille time-series graphs, PCIe bus traffic, video encoder/decoder engine utilization, and top processes.
   2. **Detailed Charts**: Dedicated full-width quad-chart view with min / max / avg / current statistics and custom time axes.
   3. **Process Manager**: Interactive table showing all active GPU processes (Compute, Graphics, and C+G), memory usage, % allocation, full command line inspector, sorting, and safe process termination (`SIGTERM` with confirmation).
 - **🕹️ Live Telemetry Controls**:
   - Dynamically speed up or slow down polling (`+` / `-` from 50ms to 5s).
   - Freeze/pause telemetry at any time (`Space`) to inspect transient spikes.
-  - Multi-GPU support with instant switching (`Left` / `Right`).
+  - Multi-GPU fleet monitoring with simultaneous sampling (`-g all` / `--all`) or instant switching (`Left` / `Right`).
 - **📟 Non-Interactive Scripting & Snapshot Mode**:
   - Automatically prints a clean telemetry summary table if stdout is redirected or piped (`| head`, `| grep`).
-  - Dedicated `-s, --snapshot` flag for quick checks.
+  - Dedicated `-s, --snapshot` flag for quick checks (supports `--snapshot -g all` to dump all GPUs).
 
 ---
 
@@ -83,6 +84,13 @@ cargo install --path .
 # Launch with default 500ms sampling
 nvidia-smi-rt
 
+# Monitor all GPUs simultaneously (Fleet View)
+nvidia-smi-rt -g all
+# or:
+nvidia-smi-rt --all
+# or:
+nvidia-smi-rt -a
+
 # Launch with 200ms ultra-fast sampling
 nvidia-smi-rt -i 200
 
@@ -99,6 +107,11 @@ nvidia-smi-rt --no-nvml
 # Print a single-shot telemetry summary and exit
 nvidia-smi-rt --snapshot
 
+# Print snapshots for all detected GPUs
+nvidia-smi-rt --all --snapshot
+# or:
+nvidia-smi-rt -g all --snapshot
+
 # Output can also be safely piped to tools like grep or jq
 nvidia-smi-rt | grep "Compute Util"
 ```
@@ -109,12 +122,14 @@ nvidia-smi-rt | grep "Compute Util"
 
 | Key | Action |
 | :--- | :--- |
+| `0` / `a` | Switch to `[0] All GPUs` (Fleet View) |
 | `1` / `2` / `3` | Switch views: `[1] Overview`, `[2] Detailed Charts`, `[3] Process Manager` |
-| `Tab` / `Shift+Tab` | Cycle through views |
+| `Enter` | In Fleet View: Inspect selected GPU in Overview |
+| `Tab` / `Shift+Tab` | Cycle through views (`0` ⇄ `1` ⇄ `2` ⇄ `3`) |
 | `Space` | Freeze / Resume telemetry sampling |
 | `+` / `=` | Increase polling speed (decrease interval by 100ms) |
 | `-` / `_` | Decrease polling speed (increase interval by 100ms) |
-| `←` / `→` | Switch active GPU (multi-GPU workstations / servers) |
+| `←` / `→` (or `↑` / `↓`) | Switch active GPU (multi-GPU workstations / servers) |
 | `r` | Trigger immediate telemetry refresh |
 | `↑` / `↓` (or `j` / `k`) | Navigate processes in Process Manager |
 | `s` | Cycle process sorting mode (VRAM High/Low, PID, Name) |
@@ -139,6 +154,7 @@ src/
 │   ├── mod.rs       # UI layout coordinator and status bar
 │   ├── theme.rs     # Curated NVIDIA Green aesthetic palette & styling helpers
 │   ├── header.rs    # Real-time top bar (GPU badge, drivers, PCIe, clock, tab bar)
+│   ├── all_gpus.rs  # All GPUs Fleet View: cluster aggregates, hardware table & global processes
 │   ├── overview.rs  # Overview tab: gauges, sparklines, Braille charts, hardware & processes
 │   ├── charts.rs    # Detailed quad Braille continuous coordinate charts with min/avg/max
 │   ├── processes.rs # Interactive sortable process table with command line inspector

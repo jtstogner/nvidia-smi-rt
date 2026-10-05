@@ -53,9 +53,22 @@ pub fn render_header(f: &mut Frame, app: &App, area: Rect) {
         (" ● LIVE ", Style::default().fg(Color::Black).bg(NVIDIA_GREEN).add_modifier(Modifier::BOLD))
     };
 
-    let title_line = Line::from(vec![
+    let gpu_badge = if app.active_tab == Tab::AllGpus {
+        format!("[ALL GPUS: {} Devices] ", app.device_count)
+    } else {
+        format!("[GPU {}/{}: {}] ", app.selected_gpu, app.device_count, gpu_name)
+    };
+
+    let mut title_spans = vec![
         Span::styled("⚡ NVIDIA-SMI-RT ", Style::default().fg(NVIDIA_GREEN).add_modifier(Modifier::BOLD)),
-        Span::styled(format!("[GPU {}/{}: {}] ", app.selected_gpu, app.device_count, gpu_name), Style::default().fg(Color::White).add_modifier(Modifier::BOLD)),
+        Span::styled(gpu_badge, Style::default().fg(Color::White).add_modifier(Modifier::BOLD)),
+    ];
+
+    if app.monitor_all {
+        title_spans.push(Span::styled("[ALL MONITORED] ", Style::default().fg(NVIDIA_GREEN).add_modifier(Modifier::BOLD)));
+    }
+
+    title_spans.extend(vec![
         Span::styled(format!("Driver: {} ", driver), Style::default().fg(MUTED_GREY)),
         Span::styled(format!("CUDA: {} ", cuda), Style::default().fg(MUTED_GREY)),
         Span::styled(format!("| {} ", pci_info), Style::default().fg(ACCENT_CYAN)),
@@ -64,6 +77,8 @@ pub fn render_header(f: &mut Frame, app: &App, area: Rect) {
         Span::raw(" "),
         Span::styled(now_str, Style::default().fg(Color::White)),
     ]);
+
+    let title_line = Line::from(title_spans);
 
     let top_block = Block::default()
         .borders(Borders::ALL)
@@ -89,9 +104,10 @@ pub fn render_header(f: &mut Frame, app: &App, area: Rect) {
         .collect();
 
     let tab_index = match app.active_tab {
-        Tab::Overview => 0,
-        Tab::Charts => 1,
-        Tab::Processes => 2,
+        Tab::AllGpus => 0,
+        Tab::Overview => 1,
+        Tab::Charts => 2,
+        Tab::Processes => 3,
     };
 
     let tabs_widget = Tabs::new(tab_titles)
@@ -99,7 +115,7 @@ pub fn render_header(f: &mut Frame, app: &App, area: Rect) {
             Block::default()
                 .borders(Borders::ALL)
                 .border_style(Style::default().fg(DARK_BORDER))
-                .title(Span::styled(" Views [1/2/3 or Tab] ", Style::default().fg(MUTED_GREY))),
+                .title(Span::styled(" Views [0/1/2/3 or Tab] ", Style::default().fg(MUTED_GREY))),
         )
         .select(tab_index)
         .style(Style::default().fg(Color::White))

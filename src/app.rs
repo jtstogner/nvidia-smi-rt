@@ -7,6 +7,7 @@ use crate::telemetry::{GpuHistory, GpuProcess, GpuSnapshot, TelemetryEngine};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Tab {
+    AllGpus,
     Overview,
     Charts,
     Processes,
@@ -14,11 +15,12 @@ pub enum Tab {
 
 impl Tab {
     pub fn all() -> &'static [Tab] {
-        &[Tab::Overview, Tab::Charts, Tab::Processes]
+        &[Tab::AllGpus, Tab::Overview, Tab::Charts, Tab::Processes]
     }
 
     pub fn title(&self) -> &'static str {
         match self {
+            Tab::AllGpus => "0 All GPUs",
             Tab::Overview => "1 Overview",
             Tab::Charts => "2 Detailed Charts",
             Tab::Processes => "3 Process Manager",
@@ -27,15 +29,17 @@ impl Tab {
 
     pub fn next(&self) -> Self {
         match self {
+            Tab::AllGpus => Tab::Overview,
             Tab::Overview => Tab::Charts,
             Tab::Charts => Tab::Processes,
-            Tab::Processes => Tab::Overview,
+            Tab::Processes => Tab::AllGpus,
         }
     }
 
     pub fn prev(&self) -> Self {
         match self {
-            Tab::Overview => Tab::Processes,
+            Tab::AllGpus => Tab::Processes,
+            Tab::Overview => Tab::AllGpus,
             Tab::Charts => Tab::Overview,
             Tab::Processes => Tab::Charts,
         }
@@ -74,13 +78,16 @@ pub struct App {
     pub engine: TelemetryEngine,
     pub device_count: u32,
     pub selected_gpu: u32,
+    pub monitor_all: bool,
     pub current_snapshot: Option<GpuSnapshot>,
+    pub all_snapshots: HashMap<u32, GpuSnapshot>,
     pub histories: HashMap<u32, GpuHistory>,
     pub active_tab: Tab,
     pub interval: Duration,
     pub paused: bool,
     pub last_update: Instant,
     pub process_table_state: TableState,
+    pub all_gpus_table_state: TableState,
     pub process_sort: ProcessSort,
     pub show_help_modal: bool,
     pub kill_confirm_proc: Option<GpuProcess>,
@@ -89,7 +96,7 @@ pub struct App {
 }
 
 impl App {
-    pub fn new(engine: TelemetryEngine, initial_gpu: u32, interval: Duration) -> Self {
+    pub fn new(engine: TelemetryEngine, initial_gpu: u32, interval: Duration, monitor_all: bool) -> Self {
         let count = engine.device_count().max(1);
         let selected_gpu = initial_gpu.min(count.saturating_sub(1));
 
@@ -101,17 +108,29 @@ impl App {
         let mut process_table_state = TableState::default();
         process_table_state.select(Some(0));
 
+        let mut all_gpus_table_state = TableState::default();
+        all_gpus_table_state.select(Some(selected_gpu as usize));
+
+        let active_tab = if monitor_all {
+            Tab::AllGpus
+        } else {
+            Tab::Overview
+        };
+
         let mut app = Self {
             engine,
             device_count: count,
             selected_gpu,
+            monitor_all,
             current_snapshot: None,
+            all_snapshots: HashMap::new(),
             histories,
-            active_tab: Tab::Overview,
+            active_tab,
             interval,
             paused: false,
             last_update: Instant::now() - interval, // Trigger immediate sample
             process_table_state,
+            all_gpus_table_state,
             process_sort: ProcessSort::MemoryDesc,
             show_help_modal: false,
             kill_confirm_proc: None,
@@ -132,18 +151,43 @@ impl App {
             return;
         }
 
-        match self.engine.get_snapshot(self.selected_gpu) {
-            Ok(snap) => {
-                let history = self
-                    .histories
-                    .entry(self.selected_gpu)
-                    .or_insert_with(|| GpuHistory::new(300));
-                history.record(&snap);
-                self.current_snapshot = Some(snap);
-                self.last_update = Instant::now();
+        if self.monitor_all || self.active_tab == Tab::AllGpus {
+            for i in 0..self.device_count {
+                match self.engine.get_snapshot(i) {
+                    Ok(snap) => {
+                        let history = self
+                            .histories
+                            .entry(i)
+                            .or_insert_with(|| GpuHistory::new(300));
+                        history.record(&snap);
+                        if i == self.selected_gpu {
+                            self.current_snapshot = Some(snap.clone());
+                        }
+                        self.all_snapshots.insert(i, snap);
+                    }
+                    Err(e) => {
+                        if i == self.selected_gpu {
+                            self.set_status(format!("Error sampling GPU {}: {}", i, e));
+                        }
+                    }
+                }
             }
-            Err(e) => {
-                self.set_status(format!("Error sampling GPU {}: {}", self.selected_gpu, e));
+            self.last_update = Instant::now();
+        } else {
+            match self.engine.get_snapshot(self.selected_gpu) {
+                Ok(snap) => {
+                    let history = self
+                        .histories
+                        .entry(self.selected_gpu)
+                        .or_insert_with(|| GpuHistory::new(300));
+                    history.record(&snap);
+                    self.current_snapshot = Some(snap.clone());
+                    self.all_snapshots.insert(self.selected_gpu, snap);
+                    self.last_update = Instant::now();
+                }
+                Err(e) => {
+                    self.set_status(format!("Error sampling GPU {}: {}", self.selected_gpu, e));
+                }
             }
         }
     }
@@ -235,18 +279,23 @@ impl App {
             KeyCode::BackTab => {
                 self.active_tab = self.active_tab.prev();
             }
+            KeyCode::Char('0') | KeyCode::Char('a') => self.active_tab = Tab::AllGpus,
             KeyCode::Char('1') => self.active_tab = Tab::Overview,
             KeyCode::Char('2') => self.active_tab = Tab::Charts,
             KeyCode::Char('3') => self.active_tab = Tab::Processes,
             KeyCode::Left => {
                 if self.device_count > 1 {
                     self.selected_gpu = (self.selected_gpu + self.device_count - 1) % self.device_count;
+                    self.all_gpus_table_state.select(Some(self.selected_gpu as usize));
+                    self.current_snapshot = self.all_snapshots.get(&self.selected_gpu).cloned();
                     self.refresh_telemetry();
                 }
             }
             KeyCode::Right => {
                 if self.device_count > 1 {
                     self.selected_gpu = (self.selected_gpu + 1) % self.device_count;
+                    self.all_gpus_table_state.select(Some(self.selected_gpu as usize));
+                    self.current_snapshot = self.all_snapshots.get(&self.selected_gpu).cloned();
                     self.refresh_telemetry();
                 }
             }
@@ -256,10 +305,35 @@ impl App {
             }
             // Tab-specific controls
             _ => {
-                if self.active_tab == Tab::Processes {
-                    self.handle_process_key(key);
+                match self.active_tab {
+                    Tab::AllGpus => self.handle_all_gpus_key(key),
+                    Tab::Processes => self.handle_process_key(key),
+                    _ => {}
                 }
             }
+        }
+    }
+
+    fn handle_all_gpus_key(&mut self, key: KeyEvent) {
+        match key.code {
+            KeyCode::Up | KeyCode::Char('k') => {
+                if self.device_count > 1 {
+                    self.selected_gpu = (self.selected_gpu + self.device_count - 1) % self.device_count;
+                    self.all_gpus_table_state.select(Some(self.selected_gpu as usize));
+                    self.current_snapshot = self.all_snapshots.get(&self.selected_gpu).cloned();
+                }
+            }
+            KeyCode::Down | KeyCode::Char('j') => {
+                if self.device_count > 1 {
+                    self.selected_gpu = (self.selected_gpu + 1) % self.device_count;
+                    self.all_gpus_table_state.select(Some(self.selected_gpu as usize));
+                    self.current_snapshot = self.all_snapshots.get(&self.selected_gpu).cloned();
+                }
+            }
+            KeyCode::Enter => {
+                self.active_tab = Tab::Overview;
+            }
+            _ => {}
         }
     }
 

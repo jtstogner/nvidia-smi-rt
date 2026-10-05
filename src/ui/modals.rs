@@ -44,8 +44,16 @@ pub fn render_help_modal(f: &mut Frame, area: Rect) {
             Span::styled("Views / Tabs:", Style::default().fg(ACCENT_CYAN).add_modifier(Modifier::BOLD)),
         ]),
         Line::from(vec![
+            Span::styled("  0 / a          ", Style::default().fg(Color::White).add_modifier(Modifier::BOLD)),
+            Span::styled("All GPUs Fleet View (Multi-device dashboard)", Style::default().fg(MUTED_GREY)),
+        ]),
+        Line::from(vec![
             Span::styled("  1 / 2 / 3      ", Style::default().fg(Color::White).add_modifier(Modifier::BOLD)),
             Span::styled("Direct switch to Overview / Charts / Processes", Style::default().fg(MUTED_GREY)),
+        ]),
+        Line::from(vec![
+            Span::styled("  Enter          ", Style::default().fg(Color::White).add_modifier(Modifier::BOLD)),
+            Span::styled("In Fleet View: Jump to Overview for selected GPU", Style::default().fg(MUTED_GREY)),
         ]),
         Line::from(vec![
             Span::styled("  Tab / Shift-Tab", Style::default().fg(Color::White).add_modifier(Modifier::BOLD)),
