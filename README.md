@@ -46,6 +46,18 @@ A blazing-fast real-time NVIDIA GPU telemetry terminal dashboard and process man
 - Rust 1.74+ / Cargo (`curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh`)
 - NVIDIA Proprietary Driver installed with `libnvidia-ml.so` or `nvidia-smi`
 
+### Install via Cargo
+
+From [crates.io](https://crates.io/crates/nvidia-smi-rt):
+```bash
+cargo install nvidia-smi-rt
+```
+
+Or install the latest development version directly from GitHub:
+```bash
+cargo install --git https://github.com/jtstogner/nvidia-smi-rt.git
+```
+
 ### Build from source
 
 ```bash
@@ -56,7 +68,7 @@ cargo build --release
 
 The optimized binary will be available at `./target/release/nvidia-smi-rt`.
 
-To install system-wide or to your Cargo bin:
+To install locally to your Cargo bin (`~/.cargo/bin`):
 ```bash
 cargo install --path .
 ```

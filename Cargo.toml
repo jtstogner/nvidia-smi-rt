@@ -5,6 +5,10 @@ edition = "2024"
 authors = ["jtstogner"]
 repository = "https://github.com/jtstogner/nvidia-smi-rt"
 license = "MIT"
+description = "A real-time NVIDIA GPU telemetry terminal dashboard and process manager"
+readme = "README.md"
+keywords = ["nvidia", "gpu", "nvml", "tui", "monitoring"]
+categories = ["command-line-utilities", "hardware-support"]
 
 [dependencies]
 anyhow = "1.0.104"
