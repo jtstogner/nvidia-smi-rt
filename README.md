@@ -74,6 +74,40 @@ To install locally to your Cargo bin (`~/.cargo/bin`):
 cargo install --path .
 ```
 
+### Desktop GUI Variant (`nvidia-smi-rt-gui`)
+
+Build and run the native desktop GUI variant (powered by `eframe` / `egui` / `egui_plot` over OpenGL on Wayland or X11) by enabling the optional `gui` feature:
+
+```bash
+# Run directly in release mode
+cargo run --release --features gui --bin nvidia-smi-rt-gui
+
+# Or build both TUI and GUI binaries
+cargo build --release --features gui --bins
+```
+
+GUI features:
+- Non-blocking background NVML / `nvidia-smi` polling thread with instant UI updates.
+- Interactive time-series plots with pan, scroll-to-zoom, hover coordinates, and double-click reset.
+- Searchable/filterable Process Manager with click-to-copy command lines, GPU UUID copy, and SIGTERM confirmation modal.
+- Supports `-i/--interval`, `-g/--gpu`, `-a/--all`, `--no-nvml`, `--width`, and `--height`.
+
+### Prebuilt Packages & Releases
+
+Prebuilt TUI + GUI binaries and native packages are published via [GitHub Releases](https://github.com/jtstogner/nvidia-smi-rt/releases):
+
+- **Debian / Ubuntu**: `.deb` (`amd64`, `arm64`) — `sudo apt install ./nvidia-smi-rt_<version>_amd64.deb`
+- **Fedora / RHEL / openSUSE**: `.rpm` (`x86_64`, `aarch64`) — `sudo dnf install ./nvidia-smi-rt-<version>-1.x86_64.rpm`
+- **Linux Portable**: `.AppImage` & `.tar.gz` (`x86_64`, `aarch64`)
+- **Arch Linux**: `PKGBUILD` attached to each release
+- **Windows (`x86_64`)**: `.msi` installer, `.zip` portable archive, and Scoop manifest (`nvidia-smi-rt.json`)
+- **macOS (`arm64`, `x86_64`)**: `.dmg` disk image (`NVIDIA-SMI-RT.app` + CLI), `.tar.gz`, and Homebrew formula (`nvidia-smi-rt.rb`)
+
+Maintainers can tag and trigger a full multi-OS release with:
+```bash
+./scripts/deploy-release.sh 0.1.1
+```
+
 ---
 
 ## 🚀 Usage

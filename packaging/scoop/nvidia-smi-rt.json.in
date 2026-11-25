@@ -1,0 +1,30 @@
+{
+  "version": "@VERSION@",
+  "description": "Real-time NVIDIA GPU telemetry dashboard (TUI & GUI) and process manager",
+  "homepage": "https://github.com/jtstogner/nvidia-smi-rt",
+  "license": "MIT",
+  "architecture": {
+    "64bit": {
+      "url": "https://github.com/jtstogner/nvidia-smi-rt/releases/download/v@VERSION@/nvidia-smi-rt-v@VERSION@-windows-x86_64.zip",
+      "hash": "@SHA256_WINDOWS_X86_64@"
+    }
+  },
+  "bin": [
+    "nvidia-smi-rt.exe",
+    "nvidia-smi-rt-gui.exe"
+  ],
+  "shortcuts": [
+    [
+      "nvidia-smi-rt-gui.exe",
+      "NVIDIA-SMI-RT GUI"
+    ]
+  ],
+  "checkver": "github",
+  "autoupdate": {
+    "architecture": {
+      "64bit": {
+        "url": "https://github.com/jtstogner/nvidia-smi-rt/releases/download/v$version/nvidia-smi-rt-v$version-windows-x86_64.zip"
+      }
+    }
+  }
+}

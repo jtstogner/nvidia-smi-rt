@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <Package
+    Name="NVIDIA-SMI-RT"
+    Manufacturer="jtstogner"
+    Version="$(var.Version)"
+    UpgradeCode="8D8B2A1E-4D63-4C5E-9A14-7F3E65F2A101"
+    Scope="perMachine">
+
+    <MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed." />
+    <MediaTemplate EmbedCab="yes" />
+
+    <StandardDirectory Id="ProgramFiles64Folder">
+      <Directory Id="INSTALLFOLDER" Name="nvidia-smi-rt">
+        <Component Id="MainBinaries" Guid="E49C0E18-2D45-4A77-B319-5C6A88D11201">
+          <File Id="TuiExe" Source="$(var.BinDir)\nvidia-smi-rt.exe" KeyPath="yes" />
+          <File Id="GuiExe" Source="$(var.BinDir)\nvidia-smi-rt-gui.exe" />
+          <File Id="ReadmeFile" Source="$(var.RepoRoot)\README.md" />
+          <File Id="LicenseFile" Source="$(var.RepoRoot)\LICENSE" />
+          <Environment
+            Id="AddToUserPath"
+            Name="PATH"
+            Value="[INSTALLFOLDER]"
+            Permanent="no"
+            Part="last"
+            Action="set"
+            System="no" />
+        </Component>
+      </Directory>
+    </StandardDirectory>
+
+    <StandardDirectory Id="ProgramMenuFolder">
+      <Directory Id="ApplicationProgramsFolder" Name="NVIDIA-SMI-RT">
+        <Component Id="StartMenuShortcut" Guid="A9F44B73-9C18-4B11-8B4D-234D6E924402">
+          <Shortcut
+            Id="GuiStartMenuShortcut"
+            Name="NVIDIA-SMI-RT GUI"
+            Description="Real-time NVIDIA GPU telemetry dashboard and process manager"
+            Target="[INSTALLFOLDER]nvidia-smi-rt-gui.exe"
+            WorkingDirectory="INSTALLFOLDER" />
+          <RemoveFolder Id="RemoveStartMenuFolder" On="uninstall" />
+          <RegistryValue
+            Root="HKCU"
+            Key="Software\jtstogner\nvidia-smi-rt"
+            Name="installed"
+            Type="integer"
+            Value="1"
+            KeyPath="yes" />
+        </Component>
+      </Directory>
+    </StandardDirectory>
+
+    <Feature Id="ProductFeature" Title="NVIDIA-SMI-RT" Level="1">
+      <ComponentRef Id="MainBinaries" />
+      <ComponentRef Id="StartMenuShortcut" />
+    </Feature>
+  </Package>
+</Wix>

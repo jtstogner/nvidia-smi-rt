@@ -101,7 +101,10 @@ impl NvmlBackend {
         let clock_memory_mhz = device.clock_info(Clock::Memory).ok();
         let clock_memory_max_mhz = device.max_clock_info(Clock::Memory).ok();
 
+        #[cfg(target_os = "linux")]
         let persistence_mode = device.is_in_persistent_mode().unwrap_or(false);
+        #[cfg(not(target_os = "linux"))]
+        let persistence_mode = false;
         let perf_state = device
             .performance_state()
             .map(|p| format!("{:?}", p))

@@ -382,23 +382,13 @@ impl App {
     }
 
     fn kill_process(&mut self, pid: u32) {
-        // Send SIGTERM using kill command
-        let res = std::process::Command::new("kill")
-            .arg("-15")
-            .arg(pid.to_string())
-            .output();
-
-        match res {
-            Ok(output) if output.status.success() => {
-                self.set_status(format!("Successfully sent SIGTERM to PID {}", pid));
+        match crate::utils::terminate_process(pid) {
+            Ok(()) => {
+                self.set_status(format!("Successfully terminated PID {}", pid));
                 self.refresh_telemetry();
             }
-            Ok(output) => {
-                let err = String::from_utf8_lossy(&output.stderr);
-                self.set_status(format!("Failed to kill PID {}: {}", pid, err.trim()));
-            }
             Err(e) => {
-                self.set_status(format!("Error terminating PID {}: {}", pid, e));
+                self.set_status(format!("Failed to kill PID {}: {}", pid, e));
             }
         }
     }

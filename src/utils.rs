@@ -1,5 +1,7 @@
+use anyhow::{bail, Context, Result};
 use std::fs;
 use std::path::Path;
+use std::process::Command;
 
 /// Formats byte counts into human-readable strings (B, KiB, MiB, GiB, TiB).
 pub fn format_bytes(bytes: u64) -> String {
@@ -75,4 +77,68 @@ pub fn get_process_info_from_proc(pid: u32) -> (String, String) {
         .unwrap_or_else(|_| name.clone());
 
     (name, cmdline)
+}
+
+/// Formats throughput in KB/s into MB/s or GB/s.
+pub fn format_throughput_kbs(kbs: u64) -> String {
+    let mb_per_sec = kbs as f64 / 1024.0;
+    if mb_per_sec >= 1024.0 {
+        format!("{:.2} GB/s", mb_per_sec / 1024.0)
+    } else {
+        format!("{:.2} MB/s", mb_per_sec)
+    }
+}
+
+/// Terminates a process by PID (`SIGTERM` on Unix, `taskkill /F` on Windows).
+pub fn terminate_process(pid: u32) -> Result<()> {
+    #[cfg(windows)]
+    let output = Command::new("taskkill")
+        .args(["/PID", &pid.to_string(), "/F"])
+        .output()
+        .with_context(|| format!("Failed to invoke taskkill for PID {}", pid))?;
+
+    #[cfg(not(windows))]
+    let output = Command::new("kill")
+        .args(["-15", &pid.to_string()])
+        .output()
+        .with_context(|| format!("Failed to invoke kill for PID {}", pid))?;
+
+    if output.status.success() {
+        Ok(())
+    } else {
+        let err = String::from_utf8_lossy(&output.stderr).trim().to_string();
+        if err.is_empty() {
+            bail!("Process termination exited with status {}", output.status);
+        } else {
+            bail!("{}", err);
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_format_bytes() {
+        assert_eq!(format_bytes(512), "512 B");
+        assert_eq!(format_bytes(2048), "2.0 KiB");
+        assert_eq!(format_bytes(5 * 1024 * 1024), "5.0 MiB");
+        assert_eq!(format_bytes(3 * 1024 * 1024 * 1024), "3.00 GiB");
+        assert_eq!(format_bytes(2 * 1024 * 1024 * 1024 * 1024), "2.00 TiB");
+    }
+
+    #[test]
+    fn test_format_mhz() {
+        assert_eq!(format_mhz(850), "850 MHz");
+        assert_eq!(format_mhz(1000), "1.00 GHz");
+        assert_eq!(format_mhz(2150), "2.15 GHz");
+    }
+
+    #[test]
+    fn test_format_throughput_kbs() {
+        assert_eq!(format_throughput_kbs(512), "0.50 MB/s");
+        assert_eq!(format_throughput_kbs(2048), "2.00 MB/s");
+        assert_eq!(format_throughput_kbs(2 * 1024 * 1024), "2.00 GB/s");
+    }
 }

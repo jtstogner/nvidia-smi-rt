@@ -1,0 +1,28 @@
+# Maintainer: jtstogner <https://github.com/jtstogner/nvidia-smi-rt>
+pkgname=nvidia-smi-rt-bin
+pkgver=@VERSION@
+pkgrel=1
+pkgdesc="Real-time NVIDIA GPU telemetry dashboard (TUI & GUI) and process manager"
+arch=('x86_64' 'aarch64')
+url="https://github.com/jtstogner/nvidia-smi-rt"
+license=('MIT')
+provides=('nvidia-smi-rt')
+conflicts=('nvidia-smi-rt')
+optdepends=(
+  'nvidia-utils: Native NVML library and nvidia-smi CLI support'
+  'libxkbcommon: Wayland/X11 keyboard support for GUI'
+)
+source_x86_64=("https://github.com/jtstogner/nvidia-smi-rt/releases/download/v${pkgver}/nvidia-smi-rt-v${pkgver}-linux-x86_64.tar.gz")
+source_aarch64=("https://github.com/jtstogner/nvidia-smi-rt/releases/download/v${pkgver}/nvidia-smi-rt-v${pkgver}-linux-aarch64.tar.gz")
+sha256sums_x86_64=('@SHA256_LINUX_X86_64@')
+sha256sums_aarch64=('@SHA256_LINUX_ARM64@')
+
+package() {
+  cd "${srcdir}/nvidia-smi-rt-v${pkgver}-linux-${CARCH}"
+  install -Dm755 "nvidia-smi-rt" "${pkgdir}/usr/bin/nvidia-smi-rt"
+  install -Dm755 "nvidia-smi-rt-gui" "${pkgdir}/usr/bin/nvidia-smi-rt-gui"
+  install -Dm644 "nvidia-smi-rt-gui.desktop" "${pkgdir}/usr/share/applications/nvidia-smi-rt-gui.desktop"
+  install -Dm644 "nvidia-smi-rt.svg" "${pkgdir}/usr/share/icons/hicolor/scalable/apps/nvidia-smi-rt.svg"
+  install -Dm644 "LICENSE" "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+  install -Dm644 "README.md" "${pkgdir}/usr/share/doc/${pkgname}/README.md"
+}

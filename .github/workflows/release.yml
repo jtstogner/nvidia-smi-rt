@@ -1,0 +1,247 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag (e.g. v0.1.1; defaults to v<Cargo.toml version>)"
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  prepare:
+    name: Resolve Release Version
+    runs-on: ubuntu-24.04
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
+      tag: ${{ steps.meta.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: meta
+        shell: bash
+        run: |
+          if [ "${{ github.ref_type }}" = "tag" ]; then
+            TAG="${GITHUB_REF_NAME}"
+          elif [ -n "${{ inputs.tag }}" ]; then
+            TAG="${{ inputs.tag }}"
+          else
+            CARGO_VER="$(awk -F'"' '/^version *= *"/ {print $2; exit}' Cargo.toml)"
+            TAG="v${CARGO_VER}"
+          fi
+          VERSION="${TAG#v}"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "tag=v${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "Resolved release version=${VERSION} tag=v${VERSION}"
+
+  build-linux:
+    name: Linux (${{ matrix.arch }})
+    needs: prepare
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            arch: x86_64
+            target: x86_64-unknown-linux-gnu
+          - runner: ubuntu-24.04-arm
+            arch: aarch64
+            target: aarch64-unknown-linux-gnu
+    runs-on: ${{ matrix.runner }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Cache Cargo artifacts
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: linux-${{ matrix.arch }}
+
+      - name: Install Linux packaging tools (rpm, appimagetool)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y rpm file
+          curl -fsSL -o /tmp/appimagetool "https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-${{ matrix.arch }}.AppImage"
+          chmod +x /tmp/appimagetool
+
+      - name: Run tests (with GUI feature)
+        run: cargo test --features gui --locked
+
+      - name: Build release binaries (TUI + GUI)
+        run: cargo build --release --features gui --bins --locked --target ${{ matrix.target }}
+
+      - name: Package .tar.gz, .deb, .rpm, and .AppImage
+        env:
+          APPIMAGETOOL: /tmp/appimagetool
+        run: |
+          ./scripts/package-linux.sh \
+            "${{ needs.prepare.outputs.version }}" \
+            "${{ matrix.arch }}" \
+            "target/${{ matrix.target }}/release" \
+            dist
+
+      - name: Upload Linux packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-linux-${{ matrix.arch }}
+          path: dist/*
+
+  build-macos:
+    name: macOS (${{ matrix.arch }})
+    needs: prepare
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: arm64
+            target: aarch64-apple-darwin
+          - arch: x86_64
+            target: x86_64-apple-darwin
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Cache Cargo artifacts
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: macos-${{ matrix.arch }}
+
+      - name: Run tests (native arch)
+        if: matrix.arch == 'arm64'
+        run: cargo test --features gui --locked --target ${{ matrix.target }}
+
+      - name: Build release binaries (TUI + GUI)
+        run: cargo build --release --features gui --bins --locked --target ${{ matrix.target }}
+
+      - name: Package .tar.gz and .dmg
+        run: |
+          ./scripts/package-macos.sh \
+            "${{ needs.prepare.outputs.version }}" \
+            "${{ matrix.arch }}" \
+            "target/${{ matrix.target }}/release" \
+            dist
+
+      - name: Upload macOS packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-macos-${{ matrix.arch }}
+          path: dist/*
+
+  build-windows:
+    name: Windows (x86_64)
+    needs: prepare
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+
+      - name: Cache Cargo artifacts
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: windows-x86_64
+
+      - name: Install WiX v5 CLI
+        shell: pwsh
+        run: dotnet tool install --global wix --version 5.0.2
+
+      - name: Run tests (with GUI feature)
+        run: cargo test --features gui --locked
+
+      - name: Build release binaries (TUI + GUI)
+        run: cargo build --release --features gui --bins --locked --target x86_64-pc-windows-msvc
+
+      - name: Package .zip and .msi
+        shell: pwsh
+        run: |
+          pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/package-windows.ps1 `
+            -Version "${{ needs.prepare.outputs.version }}" `
+            -Arch x86_64 `
+            -BinDir "target/x86_64-pc-windows-msvc/release" `
+            -OutDir "dist"
+
+      - name: Upload Windows packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-windows-x86_64
+          path: dist/*
+
+  publish-release:
+    name: Publish GitHub Release
+    needs: [prepare, build-linux, build-macos, build-windows]
+    runs-on: ubuntu-24.04
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all release artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Generate package manager manifests and SHA256SUMS
+        run: |
+          ./scripts/generate-manifests.sh "${{ needs.prepare.outputs.version }}" dist
+          ls -lh dist/
+
+      - name: Create & Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.prepare.outputs.tag }}
+          name: "nvidia-smi-rt ${{ needs.prepare.outputs.tag }}"
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+          files: dist/*
+          body: |
+            ## nvidia-smi-rt ${{ needs.prepare.outputs.tag }}
+
+            Includes both the terminal dashboard (`nvidia-smi-rt`) and the native desktop GUI (`nvidia-smi-rt-gui`).
+
+            ### Packages Included
+            - **Linux (`x86_64` & `aarch64`)**: `.deb`, `.rpm`, `.AppImage`, `.tar.gz`, Arch Linux `PKGBUILD`
+            - **Windows (`x86_64`)**: `.msi` installer, `.zip` portable archive, Scoop manifest (`nvidia-smi-rt.json`)
+            - **macOS (`arm64` & `x86_64`)**: `.dmg` disk image (`NVIDIA-SMI-RT.app` + CLI), `.tar.gz`, Homebrew formula (`nvidia-smi-rt.rb`)
+            - **Checksums**: `SHA256SUMS.txt`
+
+  publish-crates:
+    name: Publish to crates.io (optional)
+    needs: [publish-release]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Publish crate if token is configured
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        run: |
+          if [ -n "$CARGO_REGISTRY_TOKEN" ]; then
+            cargo publish --locked
+          else
+            echo "CARGO_REGISTRY_TOKEN secret not configured; skipping crates.io publish."
+          fi

@@ -1,0 +1,39 @@
+class NvidiaSmiRt < Formula
+  desc "Real-time NVIDIA GPU telemetry dashboard (TUI & GUI) and process manager"
+  homepage "https://github.com/jtstogner/nvidia-smi-rt"
+  version "@VERSION@"
+  license "MIT"
+
+  on_macos do
+    on_arm do
+      url "https://github.com/jtstogner/nvidia-smi-rt/releases/download/v@VERSION@/nvidia-smi-rt-v@VERSION@-macos-arm64.tar.gz"
+      sha256 "@SHA256_MACOS_ARM64@"
+    end
+    on_intel do
+      url "https://github.com/jtstogner/nvidia-smi-rt/releases/download/v@VERSION@/nvidia-smi-rt-v@VERSION@-macos-x86_64.tar.gz"
+      sha256 "@SHA256_MACOS_X86_64@"
+    end
+  end
+
+  on_linux do
+    on_arm do
+      url "https://github.com/jtstogner/nvidia-smi-rt/releases/download/v@VERSION@/nvidia-smi-rt-v@VERSION@-linux-aarch64.tar.gz"
+      sha256 "@SHA256_LINUX_ARM64@"
+    end
+    on_intel do
+      url "https://github.com/jtstogner/nvidia-smi-rt/releases/download/v@VERSION@/nvidia-smi-rt-v@VERSION@-linux-x86_64.tar.gz"
+      sha256 "@SHA256_LINUX_X86_64@"
+    end
+  end
+
+  def install
+    bin.install "nvidia-smi-rt"
+    bin.install "nvidia-smi-rt-gui"
+    doc.install "README.md", "LICENSE"
+  end
+
+  test do
+    assert_match "nvidia-smi-rt", shell_output("#{bin}/nvidia-smi-rt --version")
+    assert_match "nvidia-smi-rt-gui", shell_output("#{bin}/nvidia-smi-rt-gui --version")
+  end
+end

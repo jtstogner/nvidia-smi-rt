@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=NVIDIA-SMI-RT
+GenericName=GPU Telemetry Monitor
+Comment=Real-time NVIDIA GPU telemetry dashboard and process manager
+Exec=nvidia-smi-rt-gui
+Icon=nvidia-smi-rt
+Terminal=false
+Categories=System;Monitor;HardwareSettings;
+Keywords=nvidia;gpu;nvml;telemetry;monitor;vram;
+StartupNotify=true

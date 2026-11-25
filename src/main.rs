@@ -1,7 +1,7 @@
 mod app;
-mod telemetry;
 mod ui;
-mod utils;
+
+use nvidia_smi_rt::{telemetry, utils};
 
 use anyhow::Result;
 use clap::Parser;
