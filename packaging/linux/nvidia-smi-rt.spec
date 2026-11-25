@@ -25,8 +25,8 @@ install -Dm644 "%{_sourcedir}/LICENSE" "%{buildroot}%{_licensedir}/nvidia-smi-rt
 install -Dm644 "%{_sourcedir}/README.md" "%{buildroot}%{_docdir}/nvidia-smi-rt/README.md"
 
 %files
-%license LICENSE
-%doc README.md
+%license %{_licensedir}/nvidia-smi-rt/LICENSE
+%doc %{_docdir}/nvidia-smi-rt/README.md
 %{_bindir}/nvidia-smi-rt
 %{_bindir}/nvidia-smi-rt-gui
 %{_datadir}/applications/nvidia-smi-rt-gui.desktop
